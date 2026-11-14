@@ -1,0 +1,51 @@
+
+name: Build Atharv Android APKs
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "atharv-android-project.zip"
+      - ".github/workflows/android-build.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Extract Android project
+        run: |
+          unzip -q atharv-android-project.zip -d .
+          test -f atharv-android/app/build.gradle.kts
+          test -f atharv-android/app/src/main/assets/index.html
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Build Debug and Release APKs
+        working-directory: atharv-android
+        run: gradle --no-daemon assembleDebug assembleRelease
+
+      - name: Upload APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: Atharv-Enterprises-APKs
+          path: |
+            atharv-android/app/build/outputs/apk/debug/*.apk
+            atharv-android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          retention-days: 30
