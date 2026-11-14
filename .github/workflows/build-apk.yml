@@ -1,0 +1,76 @@
+
+name: Build Atharv Enterprises APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "index.html"
+      - "atharv-logo.png"
+      - ".github/workflows/build-apk.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Prepare App
+        run: |
+          test -f index.html
+          mkdir -p www
+          cp index.html www/index.html
+          if [ -f atharv-logo.png ]; then
+            cp atharv-logo.png www/atharv-logo.png
+          fi
+
+      - name: Install Capacitor
+        run: |
+          npm init -y
+          npm install @capacitor/core@7.4.3 @capacitor/android@7.4.3
+          npm install -D @capacitor/cli@7.4.3
+          cat > capacitor.config.json <<'EOF'
+          {
+            "appId": "com.atharventerprises.app",
+            "appName": "Atharv Enterprises",
+            "webDir": "www"
+          }
+          EOF
+          npx cap add android
+          npx cap sync android
+
+      - name: Build APKs
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug assembleRelease
+
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Atharv-Debug-APK
+          path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+      - name: Upload Release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Atharv-Release-APK
+          path: android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
